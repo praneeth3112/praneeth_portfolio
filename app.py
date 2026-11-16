@@ -71,28 +71,28 @@ def get_health_payload() -> Dict[str, Any]:
     }
 
 
-def run_flask_app(host: str = "127.0.0.1", port: int = 5000) -> None:
-    """Serve portfolio pages and JSON endpoints using Flask."""
+def create_flask_app():
+    """Create and configure the Flask WSGI application."""
     from flask import Flask, Response, jsonify, request
 
-    app = Flask(__name__)
+    flask_app = Flask(__name__)
 
-    @app.get("/")
+    @flask_app.get("/")
     def index() -> Response:
         html_path = resolve_html_entry()
         if html_path is None:
             return Response("index.html not found", status=404)
         return Response(html_path.read_text(encoding="utf-8"), mimetype="text/html")
 
-    @app.get("/api/health")
+    @flask_app.get("/api/health")
     def api_health() -> Response:
         return jsonify(get_health_payload())
 
-    @app.get("/api/profile")
+    @flask_app.get("/api/profile")
     def api_profile() -> Response:
         return jsonify(export_portfolio_dict())
 
-    @app.get("/api/projects")
+    @flask_app.get("/api/projects")
     def api_projects() -> Response:
         return jsonify(
             filter_projects(
@@ -102,11 +102,23 @@ def run_flask_app(host: str = "127.0.0.1", port: int = 5000) -> None:
             )
         )
 
-    @app.get("/api/skills")
+    @flask_app.get("/api/skills")
     def api_skills() -> Response:
         return jsonify(SKILLS)
 
-    app.run(host=host, port=port, debug=False)
+    return flask_app
+
+
+try:
+    app = create_flask_app()
+except ImportError:
+    app = None
+
+
+def run_flask_app(host: str = "127.0.0.1", port: int = 5000) -> None:
+    """Serve portfolio pages and JSON endpoints using Flask."""
+    flask_app = app or create_flask_app()
+    flask_app.run(host=host, port=port, debug=False)
 
 
 class StdlibPortfolioHandler(BaseHTTPRequestHandler):
@@ -160,7 +172,7 @@ def run_stdlib_server(host: str = "127.0.0.1", port: int = 5000) -> None:
 
 
 if __name__ == "__main__":
-    try:
+    if app is not None:
         run_flask_app()
-    except ImportError:
+    else:
         run_stdlib_server()
